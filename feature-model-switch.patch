@@ -1,0 +1,74 @@
+diff --git a/.env.example b/.env.example
+index 6b3c5a2..e1eae93 100644
+--- a/.env.example
++++ b/.env.example
+@@
+ # List of free models: https://openrouter.ai/models?max_price=0
+ MODEL=deepseek/deepseek-r1:free
++# Available models for /model command (comma-separated)
++MODELS=deepseek/deepseek-r1:free,anthropic/claude-3.5-sonnet,openai/gpt-4-turbo
+
+diff --git a/main.go b/main.go
+index b421c83..e5e6ff1 100644
+--- a/main.go
++++ b/main.go
+@@
+ 	"log"
+ 	"openrouter-bot/api"
+ 	"openrouter-bot/config"
+ 	"openrouter-bot/lang"
+ 	"openrouter-bot/user"
+ 	"strconv"
++	"strings"
++	"os"
+
+@@ func main() {
+ 	userManager := user.NewUserManager("logs")
++	modelList := strings.Split(os.Getenv("MODELS"), ",")
++	userModels := make(map[int64]string)
+
+ 	for update := range updates {
+ 		if update.Message == nil {
+-			continue
++			// Handle model change via inline keyboard
++			if update.CallbackQuery != nil {
++				selectedModel := update.CallbackQuery.Data
++				userModels[update.CallbackQuery.From.ID] = selectedModel
++				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
++					fmt.Sprintf("Модель установлена: %s", selectedModel))
++				bot.Send(msg)
++				continue
++			}
++			continue
+ 		}
+@@ if update.Message.IsCommand() {
+ 			case "stop":
+ 				if userStats.CurrentStream != nil {
+ 					userStats.CurrentStream.Close()
+ 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, lang.Translate("commands.stop", conf.Lang))
+ 					bot.Send(msg)
+ 				} else {
+ 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, lang.Translate("commands.stop_err", conf.Lang))
+ 					bot.Send(msg)
+ 				}
++			case "model":
++				modelButtons := make([][]tgbotapi.InlineKeyboardButton, 0)
++				for _, m := range modelList {
++					modelButtons = append(modelButtons, tgbotapi.NewInlineKeyboardRow(
++						tgbotapi.NewInlineKeyboardButtonData(m, m),
++					))
++				}
++				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выбери модель:")
++				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(modelButtons...)
++				bot.Send(msg)
+@@ go func(userStats *user.UsageTracker) {
+ 				// Handle user message
+ 				if userStats.HaveAccess(conf) {
++					// Подстановка кастомной модели пользователя
++					userModel := userModels[update.SentFrom().ID]
++					if userModel != "" {
++						conf.Model.Slug = userModel
++					}
+ 					responseID := api.HandleChatGPTStreamResponse(bot, client, update.Message, conf, userStats)
+ 					if conf.Model.Type == "openrouter" {
+ 						userStats.GetUsageFromApi(responseID, conf)
