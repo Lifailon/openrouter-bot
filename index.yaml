@@ -1,0 +1,17 @@
+apiVersion: v1
+entries:
+  openrouter-bot:
+  - annotations:
+      artifacthub.io/links: |-
+        - name: GitHub
+          url: https://github.com/Lifailon/openrouter-bot
+    apiVersion: v2
+    appVersion: 0.4.0
+    created: "2025-08-18T12:38:02.253649803+03:00"
+    description: OpenRouter in Telegram
+    digest: 76edf042f7b7209c03ad76f6cf57d28799d4560618b2fc8ee8913706a628f3b2
+    name: openrouter-bot
+    urls:
+    - https://lifailon.github.io/openrouter-bot/openrouter-bot-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-08-18T12:38:02.253284697+03:00"
